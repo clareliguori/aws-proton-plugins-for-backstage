@@ -12,6 +12,8 @@
  */
 
 import { errorHandler } from '@backstage/backend-common';
+import { Config } from '@backstage/config';
+import { DefaultAwsCredentialsProvider } from '@backstage/integration';
 import express from 'express';
 import Router from 'express-promise-router';
 import { Logger } from 'winston';
@@ -19,13 +21,15 @@ import { AwsProtonApi } from '../api';
 
 export interface RouterOptions {
   logger: Logger;
+  config: Config;
 }
 
 export async function createRouter(
   options: RouterOptions,
 ): Promise<express.Router> {
-  const { logger } = options;
-  const awsProtonApi = new AwsProtonApi(logger);
+  const { logger, config } = options;
+  const awsCredentialsProvider = DefaultAwsCredentialsProvider.fromConfig(config);
+  const awsProtonApi = new AwsProtonApi(logger, awsCredentialsProvider);
 
   const router = Router();
   router.use(express.json());

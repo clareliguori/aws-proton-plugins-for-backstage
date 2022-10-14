@@ -13,14 +13,31 @@
 
 import { GetServiceCommand, ProtonClient } from '@aws-sdk/client-proton';
 import { getVoidLogger } from '@backstage/backend-common';
+import { AwsCredentials, AwsCredentialsProvider, AwsCredentialsProviderOpts } from '@backstage/integration';
 import { mockClient } from "aws-sdk-client-mock";
 import { AwsProtonApi } from './AwsProtonApi';
 
 const protonMock = mockClient(ProtonClient);
+let awsCredentialsProvider: AwsCredentialsProvider;
+
+function getMockCredentials(): Promise<AwsCredentials> {
+  return Promise.resolve({
+    provider: async () => {
+      return Promise.resolve({
+        accessKeyId: 'MY_ACCESS_KEY_ID',
+        secretAccessKey: 'MY_SECRET_ACCESS_KEY',
+      });
+    },
+  });
+}
 
 describe('AwsProtonApi', () => {
   beforeEach(() => {
     protonMock.reset();
+
+    awsCredentialsProvider = {
+      getCredentials: jest.fn((_: AwsCredentialsProviderOpts) => getMockCredentials()),
+    };
   });
 
   it('returns service', async () => {
@@ -36,10 +53,14 @@ describe('AwsProtonApi', () => {
       }
     });
 
-    const client = new AwsProtonApi(getVoidLogger());
+    const client = new AwsProtonApi(getVoidLogger(), awsCredentialsProvider);
 
     const service = await client.getProtonService('arn:aws:proton:us-west-2:1234567890:service/test')
 
     expect(service.name).toEqual('test');
+
+    expect(
+      awsCredentialsProvider.getCredentials,
+    ).toHaveBeenCalledWith({ arn: 'arn:aws:proton:us-west-2:1234567890:service/test' });
   });
 });
